@@ -1,20 +1,17 @@
 #pragma once
 #include "Particle.h"
 #include "RandomGenerator.h"
+#include "SizeTracking.h"
 #include <math.h>
 #include <vector>
-#include "opencv2/objdetect.hpp"
-#include "opencv2/videoio.hpp"
-#include "opencv2/highgui.hpp"
-#include "opencv2/imgproc.hpp"
-#include <opencv2/core/core.hpp>
 
 using namespace std;
 using namespace cv;
 
 class ColorBasedParticleFilter {
 public:
-	const int NUMBER_OF_PARTICLES = 230;
+	const int NUMBER_OF_PARTICLES = 200;
+	int step = 0;
 	vector<Particle> particles;
 
 	Mat initial_frame_hist_b;
@@ -22,7 +19,8 @@ public:
 	Mat initial_frame_hist_r;
 
 	int image_width, image_height;
-	int tracking_window_width, tracking_window_height;
+	int tracking_window_width, tracking_window_height, initial_tracking_window_width, initial_tracking_window_height;
+	int feature_point_count = 0;
 
 	int mean_x;
 	int mean_y;

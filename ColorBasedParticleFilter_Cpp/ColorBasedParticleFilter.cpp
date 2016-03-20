@@ -42,6 +42,43 @@ void ColorBasedParticleFilter::on_newFrame(Mat* m) {
 
 	move_particle();
 	
+	//Resize the tracking window size
+	if (step < 6)
+		step++;
+	else{
+		step = 0;
+		if (feature_point_count == 0) {
+			Mat t = *m;
+			Mat sub_mat = t(Rect(mean_x, mean_y, tracking_window_width, tracking_window_height));
+			feature_point_count = calc_first_class_points(sub_mat);
+		}
+		else {
+			Mat t = *m;
+			Mat sub_mat = t(Rect(mean_x,mean_y,tracking_window_width,tracking_window_height));
+			int p = calc_first_class_points(sub_mat);
+
+			if (p > feature_point_count * 1.21) {
+				feature_point_count = p;
+				tracking_window_width *= 1.1;
+				tracking_window_height *= 1.1;
+				if (tracking_window_width > initial_tracking_window_width * 1.5)
+					tracking_window_width = initial_tracking_window_width * 1.5;
+				if (tracking_window_height > initial_tracking_window_height * 1.5)
+					tracking_window_height = initial_tracking_window_height * 1.5;
+			}
+			else if (p < feature_point_count * 0.81) {
+				feature_point_count = p;
+				tracking_window_width *= 0.9;
+				tracking_window_width *= 0.9;
+				if (tracking_window_width < initial_tracking_window_width * 0.5)
+					tracking_window_width = initial_tracking_window_width * 0.5;
+				if (tracking_window_height < initial_tracking_window_height * 0.5)
+					tracking_window_height = initial_tracking_window_height * 0.5;
+			}
+		}
+	}
+
+	//Draw the tracking rectangle
 	rectangle(*m, Rect(mean_x,mean_y,tracking_window_width,tracking_window_height), Scalar(255, 0, 0, 255), 3);
 	
 	//Draw the particles

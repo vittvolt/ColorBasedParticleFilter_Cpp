@@ -116,11 +116,13 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Particle.cpp" />
     <ClCompile Include="RandomGenerator.cpp" />
+    <ClCompile Include="SizeTracking.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ColorBasedParticleFilter.h" />
     <ClInclude Include="Particle.h" />
     <ClInclude Include="RandomGenerator.h" />
+    <ClInclude Include="SizeTracking.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

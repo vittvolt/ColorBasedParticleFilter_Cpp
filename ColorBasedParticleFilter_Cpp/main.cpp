@@ -25,9 +25,16 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 		X2 = x;
 		Y2 = y;
 
-		mFilter = new ColorBasedParticleFilter(frame.cols, frame.rows);
+		if (mFilter == NULL)
+			mFilter = new ColorBasedParticleFilter(frame.cols, frame.rows);
+		else {
+			delete mFilter;
+			mFilter = new ColorBasedParticleFilter(frame.cols, frame.rows);
+		}
 		mFilter->tracking_window_width = X2 - X1;
 		mFilter->tracking_window_height = Y2 - Y1;
+		mFilter->initial_tracking_window_width = X2 - X1;
+		mFilter->initial_tracking_window_height = Y2 - Y1;
 		mFilter->image_width = frame.cols;
 		mFilter->image_height = frame.rows;
 		mFilter->calculate_particles_xy_mean();
