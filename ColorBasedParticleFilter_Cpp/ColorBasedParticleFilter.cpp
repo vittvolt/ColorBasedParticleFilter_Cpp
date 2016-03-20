@@ -59,7 +59,7 @@ void ColorBasedParticleFilter::on_newFrame(Mat* m) {
 		}
 		else {
 			Mat t = *m;
-			Mat sub_mat = t(Rect(mean_x,mean_y,tracking_window_width,tracking_window_height));
+			Mat sub_mat = t(Rect(mean_x,mean_y,(mean_x+tracking_window_width >= m->cols)?m->cols-mean_x:tracking_window_width,(mean_y+tracking_window_height>=m->rows)?m->rows-mean_y:tracking_window_height));
 			int p = calc_first_class_points(sub_mat);
 
 			if (p > feature_point_count * 1.1) {
