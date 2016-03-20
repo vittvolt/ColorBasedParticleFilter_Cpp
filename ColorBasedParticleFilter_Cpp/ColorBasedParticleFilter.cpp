@@ -14,12 +14,17 @@ ColorBasedParticleFilter::ColorBasedParticleFilter(int X, int Y, int Width, int 
 
 void ColorBasedParticleFilter::on_newFrame(Mat* m) {
 	double weights_sum = 0;
+	double max_raw_weight = 0;
 
 	for (int i = 0; i < particles.size(); i++) {
 		Particle* p = &particles[i];
 		double weight = calc_weight_for_particle(p, *m);
 		p->weight = weight;
 		weights_sum += weight;
+
+		//Get the maximum assigned weight
+		if (weight > max_raw_weight)
+			max_raw_weight = weight;
 	}
 
 	//Normalize the weights
@@ -57,29 +62,44 @@ void ColorBasedParticleFilter::on_newFrame(Mat* m) {
 			Mat sub_mat = t(Rect(mean_x,mean_y,tracking_window_width,tracking_window_height));
 			int p = calc_first_class_points(sub_mat);
 
-			if (p > feature_point_count * 1.21) {
+			if (p > feature_point_count * 1.1) {
 				feature_point_count = p;
-				tracking_window_width *= 1.1;
-				tracking_window_height *= 1.1;
+				tracking_window_width += 10;
+				tracking_window_height += 10;
 				if (tracking_window_width > initial_tracking_window_width * 1.5)
 					tracking_window_width = initial_tracking_window_width * 1.5;
 				if (tracking_window_height > initial_tracking_window_height * 1.5)
 					tracking_window_height = initial_tracking_window_height * 1.5;
 			}
-			else if (p < feature_point_count * 0.81) {
+			else if (p < feature_point_count * 0.9) {
 				feature_point_count = p;
-				tracking_window_width *= 0.9;
-				tracking_window_width *= 0.9;
+				tracking_window_width -= 10;
+				tracking_window_width -= 10;
 				if (tracking_window_width < initial_tracking_window_width * 0.5)
 					tracking_window_width = initial_tracking_window_width * 0.5;
 				if (tracking_window_height < initial_tracking_window_height * 0.5)
 					tracking_window_height = initial_tracking_window_height * 0.5;
 			}
+
+			double w = tracking_window_width;
+			double h = tracking_window_height;
+			double wd = initial_tracking_window_width;
+			double hd = initial_tracking_window_height;
+
+			h = w * (hd / wd);
+			tracking_window_height = h;
 		}
 	}
 
 	//Draw the tracking rectangle
-	rectangle(*m, Rect(mean_x,mean_y,tracking_window_width,tracking_window_height), Scalar(255, 0, 0, 255), 3);
+	Scalar* line_color;
+	if (max_raw_weight > 0.5)
+		line_color = new Scalar(0, 255, 0);
+	else if (max_raw_weight > 0.2)
+		line_color = new Scalar(255, 0, 0);
+	else
+		line_color = new Scalar(0, 0, 255);
+	rectangle(*m, Rect(mean_x,mean_y,tracking_window_width,tracking_window_height), *line_color, 3);
 	
 	//Draw the particles
 	for (int i = 0; i < particles.size(); i++) {
