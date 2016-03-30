@@ -4,13 +4,14 @@
 #include "SizeTracking.h"
 #include <math.h>
 #include <vector>
+#include <thread>
 
 using namespace std;
 using namespace cv;
 
 class ColorBasedParticleFilter {
 public:
-	const int NUMBER_OF_PARTICLES = 200;
+	const int NUMBER_OF_PARTICLES = 180;
 	int step = 0;
 	vector<Particle> particles;
 
@@ -21,6 +22,8 @@ public:
 	int image_width, image_height;
 	int tracking_window_width, tracking_window_height, initial_tracking_window_width, initial_tracking_window_height;
 	int feature_point_count = 0;
+	int feature_point_count_l = 0;
+	int feature_point_count_s = 0;
 
 	int mean_x;
 	int mean_y;
@@ -40,4 +43,5 @@ public:
 	void move_particle();
 	void set_image_size(int w, int h);
 	void set_tracking_window(int w, int h);
+	void background_task(Mat* m);
 };

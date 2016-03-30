@@ -48,48 +48,8 @@ void ColorBasedParticleFilter::on_newFrame(Mat* m) {
 	move_particle();
 	
 	//Resize the tracking window size
-	if (step < 6)
-		step++;
-	else{
-		step = 0;
-		if (feature_point_count == 0) {
-			Mat t = *m;
-			Mat sub_mat = t(Rect(mean_x, mean_y, tracking_window_width, tracking_window_height));
-			feature_point_count = calc_first_class_points(sub_mat);
-		}
-		else {
-			Mat t = *m;
-			Mat sub_mat = t(Rect(mean_x,mean_y,(mean_x+tracking_window_width >= m->cols)?m->cols-mean_x:tracking_window_width,(mean_y+tracking_window_height>=m->rows)?m->rows-mean_y:tracking_window_height));
-			int p = calc_first_class_points(sub_mat);
-
-			if (p > feature_point_count * 1.1) {
-				feature_point_count = p;
-				tracking_window_width += 10;
-				tracking_window_height += 10;
-				if (tracking_window_width > initial_tracking_window_width * 1.5)
-					tracking_window_width = initial_tracking_window_width * 1.5;
-				if (tracking_window_height > initial_tracking_window_height * 1.5)
-					tracking_window_height = initial_tracking_window_height * 1.5;
-			}
-			else if (p < feature_point_count * 0.9) {
-				feature_point_count = p;
-				tracking_window_width -= 10;
-				tracking_window_width -= 10;
-				if (tracking_window_width < initial_tracking_window_width * 0.5)
-					tracking_window_width = initial_tracking_window_width * 0.5;
-				if (tracking_window_height < initial_tracking_window_height * 0.5)
-					tracking_window_height = initial_tracking_window_height * 0.5;
-			}
-
-			double w = tracking_window_width;
-			double h = tracking_window_height;
-			double wd = initial_tracking_window_width;
-			double hd = initial_tracking_window_height;
-
-			h = w * (hd / wd);
-			tracking_window_height = h;
-		}
-	}
+	//thread thd(&ColorBasedParticleFilter::background_task, this, m);
+	//thd.join();
 
 	//Draw the tracking rectangle
 	Scalar* line_color;
@@ -106,6 +66,10 @@ void ColorBasedParticleFilter::on_newFrame(Mat* m) {
 		Particle* p = &particles[i];
 		line(*m, Point(p->x, p->y), Point(p->x, p->y), Scalar(0, 255, 0), 7);
 	} 
+
+	//Todo: Update the histogram
+
+
 }
 
 void ColorBasedParticleFilter::set_from_initial_frame(Mat m, int x1, int y1, int x2, int y2) {
@@ -156,16 +120,19 @@ double ColorBasedParticleFilter::calc_weight_for_particle(Particle* p, Mat m) {
 	int x_end = x + tracking_window_width;
 	int y_end = y + tracking_window_height;
 
-	if (x_end >= image_width) x_end = image_width - 1;
+	/*if (x_end >= image_width) x_end = image_width - 1;
 	if (y_end >= image_height) y_end = image_height - 1;
 	if (x < 0) { x = 0; }
-	if (y < 0) { y = 0; }
+	if (y < 0) { y = 0; } */
 
 	if (x_end <= x || y_end <= y) {
 		return 0;
 	}
 
 	Rect rect(Point(x, y), Point(x_end, y_end));
+	//Limit the rect size within the boundary of the image
+	rect = rect & Rect(0, 0, m.cols, m.rows);
+
 	Mat submat = m(rect);
 	vector<Mat> bgr_channels(3);
 	split(submat, bgr_channels);
@@ -252,6 +219,61 @@ void ColorBasedParticleFilter::set_image_size(int w, int h) {
 void ColorBasedParticleFilter::set_tracking_window(int w, int h) {
 	tracking_window_width = w;
 	tracking_window_height = h;
+}
+
+void ColorBasedParticleFilter::background_task(Mat* m) {
+	if (step < 10)
+		step++;
+	else {
+		step = 0;
+		if (feature_point_count == 0) {
+			Mat t = *m;
+			double w = (mean_x + tracking_window_width >= m->cols) ? m->cols - mean_x : tracking_window_width;
+			double h = (mean_y + tracking_window_height >= m->rows) ? m->rows - mean_y : tracking_window_height;
+			Mat sub_mat = t(Rect(mean_x, mean_y, (int)w + 0.5, (int)h + 0.5));
+			Mat sub_mat_l = t(Rect(mean_x, mean_y, (int)w*1.1, (int)h*1.1));
+			Mat sub_mat_s = t(Rect(mean_x, mean_y, (int)w*0.9, (int)h*0.9));
+			feature_point_count = calc_first_class_points(sub_mat) + calc_second_class_points(sub_mat);
+			feature_point_count_l = calc_first_class_points(sub_mat_l) + calc_second_class_points(sub_mat_l);
+			feature_point_count_s = calc_first_class_points(sub_mat_s) + calc_second_class_points(sub_mat_s);
+		}
+		else {
+			Mat t = *m;
+			double w = (mean_x + tracking_window_width >= m->cols) ? m->cols - mean_x : tracking_window_width;
+			double h = (mean_y + tracking_window_height >= m->rows) ? m->rows - mean_y : tracking_window_height;
+			Mat sub_mat = t(Rect(mean_x, mean_y, (int)w + 0.5, (int)h + 0.5));
+			Mat sub_mat_l = t(Rect(mean_x, mean_y, (int)w*1.1, (int)h*1.1));
+			Mat sub_mat_s = t(Rect(mean_x, mean_y, (int)w*0.9, (int)h*0.9));
+			double count = calc_first_class_points(sub_mat) + calc_second_class_points(sub_mat);
+			double count_l = calc_first_class_points(sub_mat_l) + calc_second_class_points(sub_mat_l);
+			double count_s = calc_first_class_points(sub_mat_s) + calc_second_class_points(sub_mat_s);
+
+			double s = 0;
+			double beta = 0.8;
+
+			//The object size may have increased
+			/*if (count_l >= feature_point_count_l)
+				s = log(beta * ((count_l - feature_point_count_l + feature_point_count) / feature_point_count));
+			else
+				s = beta * log(count / feature_point_count);
+
+			//Update the window size
+			tracking_window_width *= (1 + s);
+			tracking_window_height *= (1 + s);
+			feature_point_count = count;
+			feature_point_count_l = count_l;
+			feature_point_count_s = count_s; */
+
+			//Correct errors and maintain the width-to-height ratio
+			/*w = tracking_window_width;
+			h = tracking_window_height;
+			double wd = initial_tracking_window_width;
+			double hd = initial_tracking_window_height;
+
+			h = w * (hd / wd);
+			tracking_window_height = h; */
+		}
+	}
 }
 
 
